@@ -10,16 +10,19 @@ export interface CardData {
   exists: boolean;
 }
 
-export const DEFAULT_CONTRACT_ADDRESS = '0x1234567890123456789012345678901234567890';
+export const DEFAULT_CONTRACT_ADDRESS = '0xc74eaa220ee8dadcf4372b7b1ab50299efd99195';
 
 export const CONTRACT_STORAGE_KEY = 'anime_card_game_contract_address';
 export const ABI_STORAGE_KEY = 'anime_card_game_custom_abi';
 
 export function getStoredContractAddress(): string {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(CONTRACT_STORAGE_KEY) || '';
+    const stored = localStorage.getItem(CONTRACT_STORAGE_KEY);
+    if (stored && stored.trim() !== '') {
+      return stored.trim();
+    }
   }
-  return '';
+  return DEFAULT_CONTRACT_ADDRESS;
 }
 
 export function setStoredContractAddress(address: string): void {

@@ -12,7 +12,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { useWeb3 } from '../context/Web3Context';
-import { CONTRACT_SOURCE_CODE, contractAbi, getStoredContractABI } from '../contract/config';
+import { CONTRACT_SOURCE_CODE, contractAbi, getStoredContractABI, DEFAULT_CONTRACT_ADDRESS } from '../contract/config';
 
 interface ContractModalProps {
   isOpen: boolean;
@@ -153,17 +153,26 @@ export const ContractModal: React.FC<ContractModalProps> = ({ isOpen, onClose })
                   <label className="font-heading font-semibold text-slate-300 text-xs uppercase tracking-wider">
                     Contract Address (ที่อยู่ Contract ที่ Deploy แล้ว)
                   </label>
-                  {isConfigured ? (
-                    <span className="flex items-center text-xs text-emerald-400 font-mono-tech">
-                      <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                      Valid Address format
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-xs text-amber-400 font-mono-tech">
-                      <AlertTriangle className="w-3.5 h-3.5 mr-1" />
-                      Not configured
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setInputAddress(DEFAULT_CONTRACT_ADDRESS)}
+                      className="text-[11px] text-purple-400 hover:text-purple-300 underline font-mono-tech"
+                    >
+                      ใช้ Official Contract
+                    </button>
+                    {isConfigured ? (
+                      <span className="flex items-center text-xs text-emerald-400 font-mono-tech">
+                        <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                        Valid
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-xs text-amber-400 font-mono-tech">
+                        <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                        Not configured
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <input
