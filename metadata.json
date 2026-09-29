@@ -1,0 +1,6 @@
+{
+  "name": "Simple Anime Card Game",
+  "description": "Web3 Anime Card Game with Solidity Smart Contract, MetaMask integration, Gacha, Collection, Battle, and Admin features.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
