@@ -140,6 +140,7 @@ contract SimpleCardGame is Ownable {
     mapping(address => uint256[]) public playerCards;
 
     event CardAdded(uint256 indexed cardId, string name);
+    event CardUpdated(uint256 indexed cardId, string name);
     event CardDrawn(address indexed player, uint256 indexed cardId);
 
     constructor() {
@@ -184,6 +185,28 @@ contract SimpleCardGame is Ownable {
         string memory rarity
     ) external onlyOwner {
         _createCard(name, image, hp, attack, rarity);
+    }
+
+    function editCard(
+        uint256 cardId,
+        string memory name,
+        string memory image,
+        uint256 hp,
+        uint256 attack,
+        string memory rarity
+    ) external onlyOwner {
+        require(cards[cardId].exists, "Card does not exist");
+        require(bytes(name).length > 0, "Card name cannot be empty");
+        require(hp > 0, "HP must be greater than 0");
+        require(attack > 0, "Attack must be greater than 0");
+
+        cards[cardId].name = name;
+        cards[cardId].image = image;
+        cards[cardId].hp = hp;
+        cards[cardId].attack = attack;
+        cards[cardId].rarity = rarity;
+
+        emit CardUpdated(cardId, name);
     }
 
     function getCard(uint256 cardId) external view returns (Card memory) {

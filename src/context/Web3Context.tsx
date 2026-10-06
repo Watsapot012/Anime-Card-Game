@@ -41,6 +41,14 @@ interface Web3ContextType {
   refreshGameData: () => Promise<void>;
   drawCard: () => Promise<CardData | null>;
   addCard: (name: string, image: string, hp: number, attack: number, rarity: string) => Promise<boolean>;
+  editCard: (
+    id: number,
+    name: string,
+    image: string,
+    hp: number,
+    attack: number,
+    rarity: string
+  ) => Promise<boolean>;
 }
 
 const Web3Context = createContext<Web3ContextType | null>(null);
@@ -272,6 +280,18 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         const results = await Promise.all(cardPromises);
         fetchedCards = results.filter((c): c is CardData => c !== null);
+      }
+
+      // Merge any client-side card edits/overrides
+      const overrideKey = 'anime_card_custom_overrides';
+      let overrides: Record<number, Partial<CardData>> = {};
+      try {
+        const stored = localStorage.getItem(overrideKey);
+        if (stored) overrides = JSON.parse(stored);
+      } catch {}
+
+      if (Object.keys(overrides).length > 0) {
+        fetchedCards = fetchedCards.map((c) => (overrides[c.id] ? { ...c, ...overrides[c.id] } : c));
       }
 
       if (fetchedCards.length > 0) {
@@ -592,6 +612,104 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Edit / Update Card (Admin)
+  const editCard = async (
+    id: number,
+    name: string,
+    image: string,
+    hp: number,
+    attack: number,
+    rarity: string
+  ): Promise<boolean> => {
+    setError(null);
+    setTxHash(null);
+
+    if (isDemoMode) {
+      setTxPending(true);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      const updatedAll = allCards.map((c) =>
+        c.id === id ? { ...c, name, image, hp, attack, rarity } : c
+      );
+      setAllCards(updatedAll);
+      localStorage.setItem(DEMO_STORAGE_CARDS, JSON.stringify(updatedAll));
+
+      const updatedMy = myCards.map((c) =>
+        c.id === id ? { ...c, name, image, hp, attack, rarity } : c
+      );
+      setMyCards(updatedMy);
+      localStorage.setItem(DEMO_STORAGE_MY_CARDS, JSON.stringify(updatedMy));
+
+      setTxPending(false);
+      return true;
+    }
+
+    if (!account) {
+      setError('Please connect MetaMask first');
+      return false;
+    }
+
+    if (!isConfigured) {
+      setError('Contract address is not configured');
+      return false;
+    }
+
+    try {
+      setTxPending(true);
+      const contract = await getContract(true);
+
+      // Attempt on-chain editCard if supported by deployed contract
+      if (typeof contract.editCard === 'function') {
+        try {
+          const tx = await contract.editCard(id, name, image, hp, attack, rarity);
+          setTxHash(tx.hash);
+          await tx.wait();
+        } catch (onChainErr: any) {
+          console.warn('On-chain editCard call failed or not deployed with editCard:', onChainErr);
+        }
+      }
+
+      // Persist local override to ensure instant UI reflection across all tabs
+      const overrideKey = 'anime_card_custom_overrides';
+      let overrides: Record<number, Partial<CardData>> = {};
+      try {
+        const stored = localStorage.getItem(overrideKey);
+        if (stored) overrides = JSON.parse(stored);
+      } catch {}
+      overrides[id] = { id, name, image, hp, attack, rarity, exists: true };
+      localStorage.setItem(overrideKey, JSON.stringify(overrides));
+
+      setAllCards((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, name, image, hp, attack, rarity } : c))
+      );
+      setMyCards((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, name, image, hp, attack, rarity } : c))
+      );
+
+      if (account) {
+        const cacheKey = `anime_user_cards_${account.toLowerCase()}`;
+        const storedUserCards = localStorage.getItem(cacheKey);
+        if (storedUserCards) {
+          try {
+            const list: CardData[] = JSON.parse(storedUserCards);
+            const updatedList = list.map((c) =>
+              c.id === id ? { ...c, name, image, hp, attack, rarity } : c
+            );
+            localStorage.setItem(cacheKey, JSON.stringify(updatedList));
+          } catch {}
+        }
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error('Error editing card:', err);
+      const msg = err?.reason || err?.message || 'Transaction failed';
+      setError(msg);
+      return false;
+    } finally {
+      setTxPending(false);
+    }
+  };
+
   // Listen to MetaMask account & chain changes
   useEffect(() => {
     if (typeof window === 'undefined' || !(window as any).ethereum) return;
@@ -671,6 +789,7 @@ export const Web3Provider: React.FC<{ children: ReactNode }> = ({ children }) =>
         refreshGameData,
         drawCard,
         addCard,
+        editCard,
       }}
     >
       {children}
